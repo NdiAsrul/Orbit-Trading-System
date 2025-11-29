@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Orbit One UI 8.0 + Gemini AI</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Alpine.js -->
+    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+    <!-- Markdown Parser for AI Response -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    
+    <style>
+        /* One UI Base Styles */
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background-color: #000000;
+        }
+        .font-mono { font-family: 'JetBrains Mono', monospace; }
+        [x-cloak] { display: none !important; }
+        
+        .rounded-squircle { border-radius: 28px; }
+        .rounded-btn { border-radius: 24px; }
+        
+        /* Glassmorphism */
+        .glass-panel {
+            background: rgba(30, 30, 30, 0.6);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        /* AI Gradient Border */
+        .ai-border {
+            position: relative;
+            background: rgba(30, 30, 30, 0.8);
+            background-clip: padding-box;
+            border: 1px solid transparent;
+            border-radius: 28px;
+        }
+        .ai-border::before {
+            content: '';
+            position: absolute;
+            top: 0; right: 0; bottom: 0; left: 0;
+            z-index: -1;
+            margin: -1px;
+            border-radius: inherit;
+            background: linear-gradient(to right, #4facfe, #00f2fe, #a18cd1, #fbc2eb);
+            animation: borderRotate 4s linear infinite;
+        }
+
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* AI Text Gradient */
+        .text-gradient {
+            background: linear-gradient(to right, #a18cd1, #fbc2eb);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+    </style>
+</head>
+<body class="text-white h-screen overflow-hidden selection:bg-blue-500 selection:text-white"
+      x-data="tradingApp" 
+      x-init="initApp()">
+
+    <div class="flex h-full w-full max-w-[1600px] mx-auto relative">
+        
+        <!-- Background Ambient Glow -->
+        <div class="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-blue-900/20 rounded-full blur-[120px] pointer-events-none"></div>
+        <div class="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-purple-900/10 rounded-full blur-[120px] pointer-events-none"></div>
+
+        <!-- LEFT PANEL -->
+        <div class="w-full lg:w-7/12 p-6 flex flex-col relative z-10 overflow-y-auto no-scrollbar">
+            
+            <!-- Header -->
+            <header class="flex justify-between items-center mb-6 px-2 shrink-0">
+                <div>
+                    <h1 class="text-3xl font-bold tracking-tight text-white mb-1">Orbit<span class="text-blue-400">Trader</span></h1>
+                    <div class="flex items-center gap-2">
+                        <div class="h-2 w-2 rounded-full bg-green-500 animate-pulse"></div>
+                        <span class="text-sm text-gray-400 font-medium tracking-wide">ONE UI 8.0 + GEMINI</span>
+                    </div>
+                </div>
+                <!-- AI Button -->
+                <button @click="askGemini()" 
+                        :disabled="analyzing"
+                        class="glass-panel px-5 py-2 rounded-full flex items-center gap-2 hover:bg-white/10 transition-all active:scale-95 group border-blue-500/30">
+                    <span x-show="!analyzing" class="text-lg">✨</span>
+                    <span x-show="analyzing" class="animate-spin">⌛</span>
+                    <span class="text-sm font-bold text-gradient group-hover:opacity-100 transition-opacity">AI Analyst</span>
+                </button>
+            </header>
+
+            <!-- AI Insight Panel (Expandable) -->
+            <div x-show="aiResult" 
+                 x-transition:enter="transition ease-out duration-300"
+                 x-transition:enter-start="opacity-0 -translate-y-4 scale-95"
+                 x-transition:enter-end="opacity-100 translate-y-0 scale-100"
+                 class="mb-6 ai-border p-6 relative overflow-hidden shrink-0">
+                <div class="flex justify-between items-start mb-2">
+                    <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                        <span>✨ Gemini Insight</span>
+                        <span class="text-[10px] bg-blue-500/20 text-blue-300 px-2 py-0.5 rounded uppercase tracking-wider">Flash 2.5</span>
+                    </h3>
+                    <button @click="aiResult = null" class="text-gray-400 hover:text-white">✕</button>
+                </div>
+                <div class="prose prose-invert prose-sm max-w-none leading-relaxed text-gray-200" x-html="aiResult"></div>
+            </div>
+
+            <!-- Price Widget -->
+            <div class="glass-panel rounded-squircle p-8 mb-6 relative overflow-hidden shrink-0 transition-all duration-500 hover:bg-white/[0.08]">
+                <div class="absolute right-[-20px] top-[-20px] opacity-20 rotate-12">
+                    <svg width="200" height="200" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="0.5" class="text-white"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path></svg>
+                </div>
+
+                <div class="relative z-10">
+                    <div class="flex justify-between items-start mb-4">
+                        <div class="flex flex-col">
+                            <span class="text-lg text-gray-400 font-medium">XAU/USD Gold</span>
+                            <span class="text-xs text-gray-500 bg-black/30 px-2 py-1 rounded-md w-fit mt-1">REALTIME FEED</span>
+                        </div>
+                        <div class="bg-white/10 px-3 py-1 rounded-full backdrop-blur-md">
+                            <span class="text-xs font-mono text-gray-300">SPREAD 0.20</span>
+                        </div>
+                    </div>
+                    <div class="flex items-baseline gap-4">
+                        <h2 class="text-7xl font-light tracking-tighter font-mono transition-colors duration-300" 
+                            :class="priceColor" 
+                            x-text="currentPrice.toFixed(2)">
+                        </h2>
+                    </div>
+                    <div class="mt-2 flex items-center gap-2">
+                        <span class="text-xl font-medium" 
+                              :class="priceChange >= 0 ? 'text-green-400' : 'text-red-400'" 
+                              x-text="priceChange >= 0 ? '↗ ' + priceChange.toFixed(2) : '↘ ' + priceChange.toFixed(2)">
+                        </span>
+                        <span class="text-sm text-gray-500">Since last tick</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Spacer -->
+            <div class="flex-grow min-h-[20px]"></div>
+
+            <!-- Interaction Area -->
+            <div class="grid grid-cols-2 gap-4 mb-4 shrink-0">
+                <!-- BUY BUTTON -->
+                <button @click="executeTrade('BUY')" 
+                        :disabled="loading"
+                        class="relative overflow-hidden h-28 rounded-squircle bg-gradient-to-br from-green-500/20 to-green-900/20 border border-green-500/30 hover:bg-green-500/30 active:scale-95 transition-all duration-200 group">
+                    <div class="absolute inset-0 flex flex-col justify-center items-center z-10">
+                        <span x-show="!loading" class="text-3xl font-bold text-green-400 group-hover:text-green-300">BUY</span>
+                        <span x-show="!loading" class="text-xs text-green-500/70 tracking-widest mt-1 uppercase">Long Position</span>
+                        <svg x-show="loading" class="animate-spin h-8 w-8 text-green-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                    </div>
+                </button>
+
+                <!-- SELL BUTTON -->
+                <button @click="executeTrade('SELL')" 
+                        :disabled="loading"
+                        class="relative overflow-hidden h-28 rounded-squircle bg-gradient-to-br from-red-500/20 to-red-900/20 border border-red-500/30 hover:bg-red-500/30 active:scale-95 transition-all duration-200 group">
+                    <div class="absolute inset-0 flex flex-col justify-center items-center z-10">
+                        <span x-show="!loading" class="text-3xl font-bold text-red-400 group-hover:text-red-300">SELL</span>
+                        <span x-show="!loading" class="text-xs text-red-500/70 tracking-widest mt-1 uppercase">Short Position</span>
+                        <svg x-show="loading" class="animate-spin h-8 w-8 text-red-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                    </div>
+                </button>
+            </div>
+
+            <!-- Bot Toggle -->
+            <div class="glass-panel p-4 rounded-btn flex items-center justify-between shrink-0">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-full flex items-center justify-center" 
+                         :class="botActive ? 'bg-blue-500 text-white' : 'bg-gray-700 text-gray-400'">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>
+                    </div>
+                    <div>
+                        <div class="font-semibold text-sm">Orbit AI Auto-Pilot</div>
+                        <div class="text-xs text-gray-400" x-text="botActive ? 'Running Random Walk Algo...' : 'System Idle'"></div>
+                    </div>
+                </div>
+                <button @click="toggleBot" class="relative inline-flex h-8 w-14 items-center rounded-full transition-colors focus:outline-none"
+                        :class="botActive ? 'bg-blue-600' : 'bg-gray-700'">
+                    <span class="sr-only">Enable AI</span>
+                    <span class="inline-block h-6 w-6 transform rounded-full bg-white transition-transform"
+                          :class="botActive ? 'translate-x-7' : 'translate-x-1'"></span>
+                </button>
+            </div>
+        </div>
+
+        <!-- RIGHT PANEL -->
+        <div class="hidden lg:flex w-5/12 p-6 pl-0 flex-col z-10">
+            <div class="glass-panel w-full h-full rounded-squircle p-6 flex flex-col relative overflow-hidden">
+                <div class="flex space-x-6 border-b border-white/10 pb-4 mb-4">
+                    <button class="text-sm font-semibold text-white border-b-2 border-white pb-4 -mb-4.5">Transactions</button>
+                    <button class="text-sm font-medium text-gray-500 hover:text-gray-300 transition-colors">System Logs</button>
+                </div>
+                <div class="flex-1 overflow-y-auto no-scrollbar space-y-3">
+                    <template x-for="trade in tradeHistory" :key="trade.id">
+                        <div class="bg-white/5 hover:bg-white/10 p-4 rounded-2xl flex justify-between items-center transition-all cursor-default group">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-full flex items-center justify-center bg-gray-800 border border-gray-700 font-mono text-xs font-bold"
+                                     :class="trade.type === 'BUY' ? 'text-green-400' : 'text-red-400'">
+                                    <span x-text="trade.type.substring(0,1)"></span>
+                                </div>
+                                <div>
+                                    <div class="text-sm font-bold text-gray-200" x-text="trade.type === 'BUY' ? 'Buy Order' : 'Sell Order'"></div>
+                                    <div class="text-[10px] text-gray-500 font-mono" x-text="trade.id"></div>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <div class="font-mono text-sm font-medium text-white" x-text="trade.price"></div>
+                                <div class="text-[10px] text-gray-500" x-text="formatTime(trade.time)"></div>
+                            </div>
+                        </div>
+                    </template>
+                    <div x-show="tradeHistory.length === 0" class="flex flex-col items-center justify-center h-40 text-gray-500 opacity-50">
+                        <svg class="w-12 h-12 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
+                        <span class="text-xs">No transactions yet</span>
+                    </div>
+                </div>
+                <div class="mt-4 pt-4 border-t border-white/10">
+                    <div class="text-[10px] font-bold text-gray-500 mb-2 uppercase tracking-wider">Console Output</div>
+                    <div class="h-32 bg-black/40 rounded-xl p-3 font-mono text-[10px] text-gray-400 overflow-y-auto no-scrollbar space-y-1">
+                        <template x-for="log in systemLogs" :key="log.id">
+                            <div class="flex gap-2">
+                                <span class="text-gray-600" x-text="log.time"></span>
+                                <span :class="log.color" x-text="log.message"></span>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('alpine:init', () => {
+            Alpine.data('tradingApp', () => ({
+                connectionStatus: 'INIT SYSTEM...',
+                currentPrice: 2024.50,
+                priceChange: 0,
+                priceColor: 'text-white',
+                loading: false,
+                systemLogs: [],
+                tradeHistory: [], 
+                botActive: false,
+                botProgress: 0,
+                demoMode: true,
+                
+                // AI States
+                analyzing: false,
+                aiResult: null,
+
+                initApp() {
+                    this.log('OrbitOS Kernel Loaded.', 'text-blue-400');
+                    setTimeout(() => {
+                        this.connectionStatus = 'ONLINE';
+                        this.log('Connected to Netlify Orbit Node.', 'text-green-400');
+                    }, 800);
+                    this.startMarketSimulation();
+                },
+
+                // --- GEMINI INTEGRATION ---
+                async askGemini() {
+                    if (this.analyzing) return;
+                    this.analyzing = true;
+                    this.aiResult = null;
+                    this.log('Contacting Gemini Neural Core...', 'text-purple-400');
+
+                    // 1. Gather Context
+                    const contextData = {
+                        price: this.currentPrice.toFixed(2),
+                        change: this.priceChange.toFixed(2),
+                        trend: this.priceChange >= 0 ? "UP" : "DOWN",
+                        recentTrades: this.tradeHistory.slice(0, 5).map(t => `${t.type} @ ${t.price}`).join(', ')
+                    };
+
+                    // 2. Build Prompt
+                    const prompt = `
+                        Act as a High-Frequency Trading Analyst. 
+                        Analyze this XAU/USD status:
+                        - Price: ${contextData.price}
+                        - Tick Change: ${contextData.change} (${contextData.trend})
+                        - Last 5 Orders: ${contextData.recentTrades || 'No recent activity'}
+                        
+                        Provide a very short, punchy analysis (max 40 words).
+                        Format:
+                        **Sentiment:** [BULLISH/BEARISH/NEUTRAL] 🚀/🔻
+                        **Advice:** [Actionable advice for scalping]
+                    `;
+
+                    try {
+                        // 3. Call Gemini API (using environment key)
+                        const apiKey = "AIzaSyBIDh5lDtEDz7kR4YiY08O57qfJb3sOQDo"; // Injected by environment
+                        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+                        
+                        const response = await fetch(url, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                contents: [{ parts: [{ text: prompt }] }]
+                            })
+                        });
+
+                        const data = await response.json();
+                        
+                        if (data.candidates && data.candidates[0].content) {
+                            const rawText = data.candidates[0].content.parts[0].text;
+                            this.aiResult = marked.parse(rawText); // Convert Markdown to HTML
+                            this.log('Gemini Analysis Received.', 'text-purple-400');
+                        } else {
+                            throw new Error('No content returned');
+                        }
+
+                    } catch (error) {
+                        console.error(error);
+                        this.log('AI Connection Failed.', 'text-red-500');
+                        this.aiResult = `<span class="text-red-400">Error: Could not reach AI Neural Core.</span>`;
+                    } finally {
+                        this.analyzing = false;
+                    }
+                },
+                // --------------------------
+
+                startMarketSimulation() {
+                    setInterval(() => {
+                        const volatility = Math.random() > 0.9 ? 2.5 : 0.5;
+                        const move = (Math.random() - 0.5) * volatility;
+                        this.currentPrice += move;
+                        this.priceChange = move;
+                        this.priceColor = move >= 0 ? 'text-green-400' : 'text-red-400';
+                        
+                        if (this.botActive) {
+                            this.botProgress += Math.random() * 15;
+                            if (this.botProgress >= 100) {
+                                this.botProgress = 0;
+                                const action = Math.random() > 0.5 ? 'BUY' : 'SELL';
+                                this.executeTrade(action, true);
+                            }
+                        }
+                    }, 500);
+                },
+
+                toggleBot() {
+                    this.botActive = !this.botActive;
+                    this.botProgress = 0;
+                    if(this.botActive) this.log('AI Pilot: ENGAGED', 'text-yellow-400');
+                    else this.log('AI Pilot: STANDBY', 'text-gray-500');
+                },
+
+                async executeTrade(type, isAuto = false) {
+                    if (this.loading && !isAuto) return; 
+                    this.loading = true;
+                    const price = this.currentPrice.toFixed(2);
+                    this.log(`Exec: ${type} @ ${price}`, 'text-blue-300');
+
+                    await new Promise(r => setTimeout(r, 600)); 
+                    
+                    const tradeId = 'ORD-' + Math.floor(Math.random() * 9999);
+                    const newTrade = {
+                        id: tradeId,
+                        time: new Date().toISOString(),
+                        type: type,
+                        price: price
+                    };
+                    
+                    this.tradeHistory.unshift(newTrade);
+                    if(this.tradeHistory.length > 20) this.tradeHistory.pop();
+                    this.log(`Success: ${tradeId}`, 'text-green-400');
+                    this.loading = false;
+                },
+
+                log(msg, color = 'text-gray-400') {
+                    const id = Date.now() + Math.random();
+                    const now = new Date();
+                    const time = `${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}:${now.getSeconds().toString().padStart(2,'0')}`;
+                    this.systemLogs.unshift({ id, time, message: msg, color });
+                    if (this.systemLogs.length > 50) this.systemLogs.pop();
+                },
+
+                formatTime(iso) {
+                    if(!iso) return '';
+                    const d = new Date(iso);
+                    return `${d.getHours()}:${d.getMinutes()}:${d.getSeconds()}`;
+                }
+            }));
+        });
+    </script>
+</body>
+</html>

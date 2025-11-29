@@ -1,0 +1,11 @@
+[build]
+  publish = "."
+
+[functions]
+  directory = "functions"
+
+# Routing: Semua request ke /api/trade akan diarahkan ke function api.js
+[[redirects]]
+  from = "/api/trade"
+  to = "/.netlify/functions/api"
+  status = 200
